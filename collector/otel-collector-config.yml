@@ -1,0 +1,37 @@
+receivers:
+  otlp:
+    protocols:
+      grpc:
+      http:
+
+exporters:
+  logging:
+    loglevel: info
+  otlp:
+    endpoint: tempo:4317
+    tls:
+      insecure: true
+  prometheus:
+    endpoint: 0.0.0.0:8889
+  elasticsearch:
+    index: "otel-v1"
+    endpoints: ["http://elasticsearch:9200"]
+    tls:
+      insecure: true
+      
+processors:
+  batch:
+  
+service:
+  pipelines:
+    traces:
+      receivers: [otlp]
+      exporters: [logging, otlp]
+    metrics:
+      receivers: [otlp]
+      processors: [batch]
+      exporters: [prometheus]
+    logs: 
+      receivers: [otlp]
+      processors: [batch]
+      exporters: [elasticsearch]      

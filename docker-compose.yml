@@ -1,0 +1,214 @@
+version: "3.7"
+
+name: alpha
+
+services:
+
+  frontend:
+    build:
+      context: ../Alpha.Blazor
+      dockerfile: Dockerfile
+    networks:
+      - alpha_network
+    ports:
+      - 80:80    
+    depends_on:
+      - gateway
+
+  gateway:
+    container_name: gateway
+    build:
+      context: ../alpha.gateway.service
+      dockerfile: Dockerfile
+    networks:
+      - alpha_network
+    volumes:
+      - ~/.vsdbg:/remote_debugger/
+    ports:
+      - 8080:8080
+    labels:
+      - SERVICE_CHECK_HTTP=/health
+      - SERVICE_CHECK_INTERVAL=60s
+      - SERVICE_NAME=gateway.service
+    depends_on:
+      - consul-registrator
+
+  identity:
+    container_name: identity
+    build:
+      context: ../alpha.identity.service
+      dockerfile: Dockerfile
+    networks:
+      - alpha_network
+    depends_on:
+      - postgres
+      - consul-registrator
+    ports:
+      - 8090:8080
+    volumes:
+      - ~/.vsdbg:/remote_debugger/
+    labels:
+      - SERVICE_CHECK_HTTP=/health
+      - SERVICE_CHECK_INTERVAL=60s
+      - SERVICE_NAME=identity.service
+
+#######################################################
+
+  consul:
+    container_name: alpha.consul.consul
+    image: consul:1.15.4
+    environment:
+      - CONSUL_BIND_INTERFACE=eth0
+    ports:
+      - 8500:8500
+    networks:
+      - alpha_network
+
+  consul-registrator:
+    container_name: alpha.consul.registrator
+    image: gliderlabs/registrator:master
+    command: "-explicit=true -internal=true consul://consul:8500"
+    volumes:
+      - /var/run/docker.sock:/tmp/docker.sock:ro
+    networks:
+      - alpha_network
+    depends_on:
+      - consul
+
+  postgres:
+    container_name: alpha.postgres
+    image: polaris/postgres:local
+    build:
+      context: ./postgres
+      dockerfile: Dockerfile
+    networks:
+      - alpha_network
+    ports:
+      - 5432:5432
+    environment:
+      - POSTGRES_DB=default_db
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=password
+    volumes:
+      - ./postgres/init.sh:/docker-entrypoint-initdb.d/init.sh
+      - postgres-data:/var/lib/postgresql/data
+
+#######################################################
+
+  collector:
+    image: otel/opentelemetry-collector-contrib:latest
+    container_name: collector
+    command: [ "--config=/etc/collector.yaml" ]
+    networks:
+      - alpha_network
+    ports:
+      - 8888:8888 
+      - 8889:8889 
+      - 13133:13133
+      - 4317:4317
+    volumes:
+      - ./collector/otel-collector-config.yml:/etc/collector.yaml
+    depends_on:
+      - tempo
+
+  tempo:
+    image: grafana/tempo:latest
+    container_name: tempo
+    command: [ "-config.file=/etc/tempo.yaml" ]
+    networks:
+      - alpha_network
+    volumes:
+      - ./tempo/tempo.yml:/etc/tempo.yaml
+
+  grafana:
+    image: grafana/grafana:10.0.2
+    container_name: grafana
+    networks:
+      - alpha_network
+    ports:
+      - 3000:3000
+    volumes:
+      - ./grafana/grafana-datasources.yml:/etc/grafana/provisioning/datasources/datasources.yaml
+    environment:
+      - GF_AUTH_ANONYMOUS_ENABLED=true
+      - GF_AUTH_ANONYMOUS_ORG_ROLE=Admin
+      - GF_AUTH_DISABLE_LOGIN_FORM=true
+    depends_on:
+      - collector
+      - tempo
+
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: prometheus
+    networks:
+      - alpha_network
+    ports:
+      - 9090:9090
+    command: "--config.file=/etc/prometheus/prometheus.yaml"
+    volumes:
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yaml:ro
+      - prometheus-data:/prometheus
+
+  # UNCOMMENT
+  # cadvisor:
+  #   image: gcr.io/cadvisor/cadvisor:v0.47.0     
+  #   container_name: cadvisor
+  #   networks:
+  #     - alpha_network
+  #   ports:
+  #     - 8080:8080
+  #   volumes:
+  #     - /:/rootfs:ro
+  #     - /var/run:/var/run:ro
+  #     - /sys:/sys:ro
+  #     - /var/lib/docker/:/var/lib/docker:ro
+  #     - /dev/disk/:/dev/disk:ro
+  #   devices:
+  #     - /dev/kmsg
+  #   privileged: true
+
+  node_exporter:
+    image: quay.io/prometheus/node-exporter:v1.5.0
+    container_name: node_exporter
+    command: "--path.rootfs=/host"
+    networks:
+      - alpha_network
+    pid: host
+    volumes:
+      - /:/host:ro,rslave
+
+  elasticsearch:
+    image: elasticsearch:8.12.0
+    environment:
+      - discovery.type=single-node
+      - xpack.security.enabled=false
+    networks:
+      - alpha_network
+    ports:
+      - 9200:9200
+      - 9300:9300
+    volumes:
+      - elasticsearch-data:/usr/share/elasticsearch/data
+    deploy:
+      resources:
+        limits:
+          memory: 4G
+
+  kibana:
+    image: kibana:8.12.0
+    ports:
+      - 5601:5601
+    networks:
+      - alpha_network
+    depends_on:
+      - elasticsearch
+
+volumes:
+  postgres-data:
+  prometheus-data:
+    driver: local
+  elasticsearch-data:
+
+networks:
+  alpha_network:
+
