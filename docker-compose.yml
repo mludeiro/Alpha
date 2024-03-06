@@ -28,34 +28,69 @@ services:
       - 8080:8080
     labels:
       - SERVICE_CHECK_HTTP=/health
-      - SERVICE_CHECK_INTERVAL=60s
+      - SERVICE_CHECK_INTERVAL=20s
       - SERVICE_NAME=gateway.service
+    depends_on:
+      - consul-registrator
+
+  token:
+    container_name: token
+    build:
+      context: ../Alpha.Token.Service
+      dockerfile: Dockerfile
+      args:
+        GITHUB_USER: ${GITHUB_USER}
+        GITHUB_TOKEN: ${GITHUB_TOKEN}      
+    networks:
+      - alpha_network
+    volumes:
+      - ~/.vsdbg:/remote_debugger/
+    labels:
+      - SERVICE_CHECK_HTTP=/health
+      - SERVICE_CHECK_INTERVAL=20s
+      - SERVICE_NAME=token.service
     depends_on:
       - consul-registrator
 
   identity:
     container_name: identity
     build:
-      context: ../alpha.identity.service
+      context: ../Alpha.Identity.Service
       dockerfile: Dockerfile
+      args:
+        GITHUB_USER: ${GITHUB_USER}
+        GITHUB_TOKEN: ${GITHUB_TOKEN}      
     networks:
       - alpha_network
     depends_on:
       - postgres
       - consul-registrator
+      - token
     ports:
       - 8090:8080
     volumes:
       - ~/.vsdbg:/remote_debugger/
+
+  weather:
+    container_name: weather
+    build:
+      context: ../Alpha.Weather
+      dockerfile: Dockerfile
+    networks:
+      - alpha_network
+    volumes:
+      - ~/.vsdbg:/remote_debugger/
     labels:
       - SERVICE_CHECK_HTTP=/health
-      - SERVICE_CHECK_INTERVAL=60s
-      - SERVICE_NAME=identity.service
+      - SERVICE_CHECK_INTERVAL=20s
+      - SERVICE_NAME=weather.service
+    depends_on:
+      - consul-registrator
 
 #######################################################
 
   consul:
-    container_name: alpha.consul.consul
+    container_name: alpha.consul
     image: consul:1.15.4
     environment:
       - CONSUL_BIND_INTERFACE=eth0
