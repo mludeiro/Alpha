@@ -18,20 +18,19 @@ services:
   gateway:
     container_name: gateway
     build:
-      context: ../alpha.gateway.service
+      context: ../Alpha.Gateway.Service
       dockerfile: Dockerfile
+      args:
+        GITHUB_USER: ${GITHUB_USER}
+        GITHUB_TOKEN: ${GITHUB_TOKEN}      
     networks:
       - alpha_network
     volumes:
       - ~/.vsdbg:/remote_debugger/
     ports:
       - 8080:8080
-    labels:
-      - SERVICE_CHECK_HTTP=/health
-      - SERVICE_CHECK_INTERVAL=20s
-      - SERVICE_NAME=gateway.service
     depends_on:
-      - consul-registrator
+      - consul
 
   token:
     container_name: token
@@ -45,12 +44,9 @@ services:
       - alpha_network
     volumes:
       - ~/.vsdbg:/remote_debugger/
-    labels:
-      - SERVICE_CHECK_HTTP=/health
-      - SERVICE_CHECK_INTERVAL=20s
-      - SERVICE_NAME=token.service
     depends_on:
-      - consul-registrator
+      - postgres
+      - consul
 
   identity:
     container_name: identity
@@ -64,7 +60,7 @@ services:
       - alpha_network
     depends_on:
       - postgres
-      - consul-registrator
+      - consul
       - token
     ports:
       - 8090:8080
@@ -76,16 +72,15 @@ services:
     build:
       context: ../Alpha.Weather
       dockerfile: Dockerfile
+      args:
+        GITHUB_USER: ${GITHUB_USER}
+        GITHUB_TOKEN: ${GITHUB_TOKEN}      
     networks:
       - alpha_network
     volumes:
       - ~/.vsdbg:/remote_debugger/
-    labels:
-      - SERVICE_CHECK_HTTP=/health
-      - SERVICE_CHECK_INTERVAL=20s
-      - SERVICE_NAME=weather.service
     depends_on:
-      - consul-registrator
+      - consul
 
 #######################################################
 
@@ -99,16 +94,16 @@ services:
     networks:
       - alpha_network
 
-  consul-registrator:
-    container_name: alpha.consul.registrator
-    image: gliderlabs/registrator:master
-    command: "-explicit=true -internal=true consul://consul:8500"
-    volumes:
-      - /var/run/docker.sock:/tmp/docker.sock:ro
-    networks:
-      - alpha_network
-    depends_on:
-      - consul
+  # consul-registrator:
+  #   container_name: alpha.consul.registrator
+  #   image: gliderlabs/registrator:master
+  #   command: "-explicit=true -internal=true consul://consul:8500"
+  #   volumes:
+  #     - /var/run/docker.sock:/tmp/docker.sock:ro
+  #   networks:
+  #     - alpha_network
+  #   depends_on:
+  #     - consul
 
   postgres:
     container_name: alpha.postgres
