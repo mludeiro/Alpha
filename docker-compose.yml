@@ -5,9 +5,13 @@ name: alpha
 services:
 
   frontend:
+    container_name: frontend
     build:
       context: ../Alpha.Blazor
       dockerfile: Dockerfile
+      args:
+        GITHUB_USER: ${GITHUB_USER}
+        GITHUB_TOKEN: ${GITHUB_TOKEN}      
     networks:
       - alpha_network
     ports:
@@ -85,7 +89,7 @@ services:
 #######################################################
 
   consul:
-    container_name: alpha.consul
+    container_name: consul
     image: consul:1.15.4
     environment:
       - CONSUL_BIND_INTERFACE=eth0
@@ -95,7 +99,7 @@ services:
       - alpha_network
 
   # consul-registrator:
-  #   container_name: alpha.consul.registrator
+  #   container_name: consul.registrator
   #   image: gliderlabs/registrator:master
   #   command: "-explicit=true -internal=true consul://consul:8500"
   #   volumes:
@@ -106,7 +110,7 @@ services:
   #     - consul
 
   postgres:
-    container_name: alpha.postgres
+    container_name: postgres
     image: polaris/postgres:local
     build:
       context: ./postgres
@@ -126,8 +130,8 @@ services:
 #######################################################
 
   collector:
-    image: otel/opentelemetry-collector-contrib:latest
     container_name: collector
+    image: otel/opentelemetry-collector-contrib:latest
     command: [ "--config=/etc/collector.yaml" ]
     networks:
       - alpha_network
@@ -142,8 +146,8 @@ services:
       - tempo
 
   tempo:
-    image: grafana/tempo:latest
     container_name: tempo
+    image: grafana/tempo:latest
     command: [ "-config.file=/etc/tempo.yaml" ]
     networks:
       - alpha_network
@@ -151,8 +155,8 @@ services:
       - ./tempo/tempo.yml:/etc/tempo.yaml
 
   grafana:
-    image: grafana/grafana:10.0.2
     container_name: grafana
+    image: grafana/grafana:10.0.2
     networks:
       - alpha_network
     ports:
@@ -168,8 +172,8 @@ services:
       - tempo
 
   prometheus:
-    image: prom/prometheus:latest
     container_name: prometheus
+    image: prom/prometheus:latest
     networks:
       - alpha_network
     ports:
@@ -198,8 +202,8 @@ services:
   #   privileged: true
 
   node_exporter:
-    image: quay.io/prometheus/node-exporter:v1.5.0
     container_name: node_exporter
+    image: quay.io/prometheus/node-exporter:v1.5.0
     command: "--path.rootfs=/host"
     networks:
       - alpha_network
@@ -208,6 +212,7 @@ services:
       - /:/host:ro,rslave
 
   elasticsearch:
+    container_name: elasticsearch
     image: elasticsearch:8.12.0
     environment:
       - discovery.type=single-node
@@ -225,6 +230,7 @@ services:
           memory: 4G
 
   kibana:
+    container_name: kibana
     image: kibana:8.12.0
     ports:
       - 5601:5601
