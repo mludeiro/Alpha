@@ -1,0 +1,43 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: token
+  namespace: default
+  labels:
+    app: token
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: token
+  template:
+    metadata:
+      labels:
+        app: token
+      annotations:
+        dapr.io/enabled: "true"
+        dapr.io/app-id: "token"
+        dapr.io/app-port: "8080"
+        dapr.io/log-level: "info"
+        dapr.io/sidecar-liveness-probe-period-seconds: "10"
+        dapr.io/sidecar-readiness-probe-period-seconds: "10"
+    spec:
+      containers:
+      - name: token
+        image: ghcr.io/mludeiro/alpha.token.service:latest
+        ports:
+        - containerPort: 8080
+        imagePullPolicy: Always
+      imagePullSecrets:
+      - name: regcred
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: token
+spec:
+  type: ClusterIP
+  ports:
+  - port: 8080
+  selector:
+    app: token
