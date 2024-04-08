@@ -10,8 +10,8 @@ services:
       context: ../Alpha.Blazor
       dockerfile: Dockerfile
       args:
-        GITHUB_USER: ${GITHUB_USER}
-        GITHUB_TOKEN: ${GITHUB_TOKEN}      
+        NUGET_USER: ${NUGET_USER}
+        NUGET_TOKEN: ${NUGET_TOKEN}      
     networks:
       - alpha_network
     ports:
@@ -21,82 +21,239 @@ services:
 
   gateway:
     container_name: gateway
-    build:
-      context: ../Alpha.Gateway.Service
-      dockerfile: Dockerfile
-      args:
-        GITHUB_USER: ${GITHUB_USER}
-        GITHUB_TOKEN: ${GITHUB_TOKEN}      
+    image: ghcr.io/mludeiro/alpha.gateway.service:latest
+    # build:
+    #   context: ../Alpha.Gateway.Service
+    #   dockerfile: Dockerfile
+    #   args:
+    #     NUGET_USER: ${NUGET_USER}
+    #     NUGET_TOKEN: ${NUGET_TOKEN}      
     networks:
       - alpha_network
     volumes:
       - ~/.vsdbg:/remote_debugger/
     ports:
       - 8080:8080
+  gateway-dapr:
+    image: "daprio/daprd:edge"
+    command: ["./daprd",
+     "-app-id", "gateway",
+     "-app-port", "8080",
+     "-placement-host-address", "placement:50006",
+     "-dapr-grpc-port", "50002",
+     "-dapr-http-port", "3500",
+     "-components-path", "/components"]
+    volumes:
+      - "./dapr/components/:/components"
+      - "./dapr/configuration/:/configuration"
     depends_on:
-      - consul
+      - gateway
+    network_mode: "service:gateway"
+
+  # ocelot:
+  #   container_name: ocelot
+  #   build:
+  #     context: ../Alpha.Ocelot.Service
+  #     dockerfile: Dockerfile
+  #     args:
+  #       NUGET_USER: ${NUGET_USER}
+  #       NUGET_TOKEN: ${NUGET_TOKEN}      
+  #   networks:
+  #     - alpha_network
+  #   volumes:
+  #     - ~/.vsdbg:/remote_debugger/
+  #   depends_on:
+  #     - consul
 
   token:
     container_name: token
+#    image: ghcr.io/mludeiro/alpha.token.service:latest
     build:
       context: ../Alpha.Token.Service
       dockerfile: Dockerfile
       args:
-        GITHUB_USER: ${GITHUB_USER}
-        GITHUB_TOKEN: ${GITHUB_TOKEN}      
+        NUGET_USER: ${NUGET_USER}
+        NUGET_TOKEN: ${NUGET_TOKEN}      
     networks:
       - alpha_network
     volumes:
       - ~/.vsdbg:/remote_debugger/
     depends_on:
       - postgres
-      - consul
+  token-dapr:
+    image: "daprio/daprd:edge"
+    command: ["./daprd",
+     "-app-id", "token",
+     "-app-port", "8080",
+     "-placement-host-address", "placement:50006",
+     "-components-path", "/components"]
+    volumes:
+      - "./dapr/components/:/components"
+      - "./dapr/configuration/:/configuration"
+      - "./dapr/certs/:/certs"
+    depends_on:
+      - token
+    network_mode: "service:token"
 
   identity:
     container_name: identity
-    build:
-      context: ../Alpha.Identity.Service
-      dockerfile: Dockerfile
-      args:
-        GITHUB_USER: ${GITHUB_USER}
-        GITHUB_TOKEN: ${GITHUB_TOKEN}      
+    image: ghcr.io/mludeiro/alpha.identity.service
+    # build:
+    #   context: ../Alpha.Identity.Service
+    #   dockerfile: Dockerfile
+    #   args:
+    #     NUGET_USER: ${NUGET_USER}
+    #     NUGET_TOKEN: ${NUGET_TOKEN}
     networks:
       - alpha_network
     depends_on:
       - postgres
-      - consul
       - token
     ports:
       - 8090:8080
     volumes:
       - ~/.vsdbg:/remote_debugger/
+  identity-dapr:
+    image: "daprio/daprd:edge"
+    command: ["./daprd",
+     "-app-id", "identity",
+     "-app-port", "8080",
+     "-placement-host-address", "placement:50006",
+     "-dapr-grpc-port", "50002",
+     "-dapr-http-port", "3500",
+     "-components-path", "/components"]
+    volumes:
+      - "./dapr/components/:/components"
+      - "./dapr/configuration/:/configuration"
+      - "./dapr/certs/:/certs"
+    depends_on:
+      - identity
+    network_mode: "service:identity"
+
+
+  # user:
+  #   container_name: user
+  #   build:
+  #     context: ../Alpha.User.Service
+  #     dockerfile: Dockerfile
+  #     args:
+  #       NUGET_USER: ${NUGET_USER}
+  #       NUGET_TOKEN: ${NUGET_TOKEN}      
+  #   networks:
+  #     - alpha_network
+  #   volumes:
+  #     - ~/.vsdbg:/remote_debugger/
+  #   ports:
+  #     - 3500:3500
+  # user-dapr:
+  #   image: "daprio/daprd:edge"
+  #   command: ["./daprd",
+  #    "-app-id", "user",
+  #    "-app-port", "8080",
+  #    "-placement-host-address", "placement:50006",
+  #    "-dapr-grpc-port", "50002",
+  #    "-dapr-http-port", "3500",
+  #    "-components-path", "/components"]
+  #   volumes:
+  #     - "./dapr/components/:/components"
+  #     - "./dapr/configuration/:/configuration"
+  #   depends_on:
+  #     - user
+  #   network_mode: "service:user"
+   
 
   weather:
     container_name: weather
-    build:
-      context: ../Alpha.Weather
-      dockerfile: Dockerfile
-      args:
-        GITHUB_USER: ${GITHUB_USER}
-        GITHUB_TOKEN: ${GITHUB_TOKEN}      
+    image: ghcr.io/mludeiro/alpha.weather
+    # build:
+    #   context: ../Alpha.Weather
+    #   dockerfile: Dockerfile
+    #   args:
+    #     NUGET_USER: ${NUGET_USER}
+    #     NUGET_TOKEN: ${NUGET_TOKEN}      
     networks:
       - alpha_network
     volumes:
       - ~/.vsdbg:/remote_debugger/
+  weather-dapr:
+    image: "daprio/daprd:edge"
+    command: ["./daprd",
+     "-app-id", "weather",
+     "-app-port", "8080",
+     "-placement-host-address", "placement:50006",
+     "-dapr-grpc-port", "50002",
+     "-dapr-http-port", "3500",
+     "-components-path", "/components"]
+    volumes:
+      - "./dapr/components/:/components"
+      - "./dapr/configuration/:/configuration"
+      - "./dapr/certs/:/certs"
     depends_on:
-      - consul
-
-#######################################################
-
-  consul:
-    container_name: consul
-    image: consul:1.15.4
-    environment:
-      - CONSUL_BIND_INTERFACE=eth0
+      - weather
+    network_mode: "service:weather"
+    
+  ############################
+  # Dapr placement service
+  ############################
+  placement:
+    image: "daprio/dapr"
+    command: ["./placement", "-port", "50006"]
     ports:
-      - 8500:8500
+      - 50006:50006
     networks:
       - alpha_network
+
+  dapr-dashboard:
+    image: "daprio/dashboard:latest"
+    command: [ "--docker-compose=true",
+      "--components-path=/components", 
+      "--config-path=/configuration", 
+      "--docker-compose-path=/home/nonroot/docker-compose.yml" ]
+    ports:
+      - "8999:8080"  # Puerto en el que se ejecutará el Dapr Dashboard
+    volumes:
+      - "./dapr/components/:/components"
+      - "./dapr/configuration/:/configuration"
+      - "./dapr/certs/:/certs"
+      - ./docker-compose.yml:/home/nonroot/docker-compose.yml
+    networks:
+      - alpha_network
+
+  ############################
+  # Redis state store
+  ############################
+  redis:
+    container_name: redis
+    image: "redis:alpine"
+    ports:
+      - 6380:6379
+    networks:
+      - alpha_network
+      
+  redis-commander:
+    image: rediscommander/redis-commander:latest
+    environment:
+      REDIS_HOSTS: redis
+      REDIS_HOST: redis
+      REDIS_PORT: redis:6379
+      REDIS_PASSWORD: ${REDIS_PASSWORD}
+      HTTP_USER: root
+      HTTP_PASSWORD: root
+    ports:
+      - 8081:8081
+    networks:
+      - alpha_network
+#######################################################
+
+  # consul:
+  #   container_name: consul
+  #   image: consul:1.15.4
+  #   environment:
+  #     - CONSUL_BIND_INTERFACE=eth0
+  #   ports:
+  #     - 8500:8500
+  #   networks:
+  #     - alpha_network
 
   # consul-registrator:
   #   container_name: consul.registrator
@@ -129,121 +286,122 @@ services:
 
 #######################################################
 
-  collector:
-    container_name: collector
-    image: otel/opentelemetry-collector-contrib:latest
-    command: [ "--config=/etc/collector.yaml" ]
-    networks:
-      - alpha_network
-    ports:
-      - 8888:8888 
-      - 8889:8889 
-      - 13133:13133
-      - 4317:4317
-    volumes:
-      - ./collector/otel-collector-config.yml:/etc/collector.yaml
-    depends_on:
-      - tempo
-
-  tempo:
-    container_name: tempo
-    image: grafana/tempo:latest
-    command: [ "-config.file=/etc/tempo.yaml" ]
-    networks:
-      - alpha_network
-    volumes:
-      - ./tempo/tempo.yml:/etc/tempo.yaml
-
-  grafana:
-    container_name: grafana
-    image: grafana/grafana:10.0.2
-    networks:
-      - alpha_network
-    ports:
-      - 3000:3000
-    volumes:
-      - ./grafana/grafana-datasources.yml:/etc/grafana/provisioning/datasources/datasources.yaml
-    environment:
-      - GF_AUTH_ANONYMOUS_ENABLED=true
-      - GF_AUTH_ANONYMOUS_ORG_ROLE=Admin
-      - GF_AUTH_DISABLE_LOGIN_FORM=true
-    depends_on:
-      - collector
-      - tempo
-
-  prometheus:
-    container_name: prometheus
-    image: prom/prometheus:latest
-    networks:
-      - alpha_network
-    ports:
-      - 9090:9090
-    command: "--config.file=/etc/prometheus/prometheus.yaml"
-    volumes:
-      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yaml:ro
-      - prometheus-data:/prometheus
-
-  # UNCOMMENT
-  # cadvisor:
-  #   image: gcr.io/cadvisor/cadvisor:v0.47.0     
-  #   container_name: cadvisor
+  # collector:
+  #   container_name: collector
+  #   image: otel/opentelemetry-collector-contrib:latest
+  #   command: [ "--config=/etc/collector.yaml" ]
   #   networks:
   #     - alpha_network
   #   ports:
-  #     - 8080:8080
+  #     - 8888:8888 
+  #     - 8889:8889 
+  #     - 13133:13133
+  #     - 4317:4317
   #   volumes:
-  #     - /:/rootfs:ro
-  #     - /var/run:/var/run:ro
-  #     - /sys:/sys:ro
-  #     - /var/lib/docker/:/var/lib/docker:ro
-  #     - /dev/disk/:/dev/disk:ro
-  #   devices:
-  #     - /dev/kmsg
-  #   privileged: true
+  #     - ./collector/otel-collector-config.yml:/etc/collector.yaml
+  #   depends_on:
+  #     - tempo
 
-  node_exporter:
-    container_name: node_exporter
-    image: quay.io/prometheus/node-exporter:v1.5.0
-    command: "--path.rootfs=/host"
-    networks:
-      - alpha_network
-    pid: host
-    volumes:
-      - /:/host:ro,rslave
+  # tempo:
+  #   container_name: tempo
+  #   image: grafana/tempo:latest
+  #   command: [ "-config.file=/etc/tempo.yaml" ]
+  #   networks:
+  #     - alpha_network
+  #   volumes:
+  #     - ./tempo/tempo.yml:/etc/tempo.yaml
 
-  elasticsearch:
-    container_name: elasticsearch
-    image: elasticsearch:8.12.0
-    environment:
-      - discovery.type=single-node
-      - xpack.security.enabled=false
-    networks:
-      - alpha_network
-    ports:
-      - 9200:9200
-      - 9300:9300
-    volumes:
-      - elasticsearch-data:/usr/share/elasticsearch/data
-    deploy:
-      resources:
-        limits:
-          memory: 4G
+  # grafana:
+  #   container_name: grafana
+  #   image: grafana/grafana:10.0.2
+  #   networks:
+  #     - alpha_network
+  #   ports:
+  #     - 3000:3000
+  #   volumes:
+  #     - ./grafana/grafana-datasources.yml:/etc/grafana/provisioning/datasources/datasources.yaml
+  #   environment:
+  #     - GF_AUTH_ANONYMOUS_ENABLED=true
+  #     - GF_AUTH_ANONYMOUS_ORG_ROLE=Admin
+  #     - GF_AUTH_DISABLE_LOGIN_FORM=true
+  #   depends_on:
+  #     - collector
+  #     - tempo
 
-  kibana:
-    container_name: kibana
-    image: kibana:8.12.0
-    ports:
-      - 5601:5601
-    networks:
-      - alpha_network
-    depends_on:
-      - elasticsearch
+  # prometheus:
+  #   container_name: prometheus
+  #   image: prom/prometheus:latest
+  #   networks:
+  #     - alpha_network
+  #   ports:
+  #     - 9090:9090
+  #   command: "--config.file=/etc/prometheus/prometheus.yaml"
+  #   volumes:
+  #     - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yaml:ro
+  #     - prometheus-data:/prometheus
+
+  # # UNCOMMENT
+  # # cadvisor:
+  # #   image: gcr.io/cadvisor/cadvisor:v0.47.0     
+  # #   container_name: cadvisor
+  # #   networks:
+  # #     - alpha_network
+  # #   ports:
+  # #     - 8080:8080
+  # #   volumes:
+  # #     - /:/rootfs:ro
+  # #     - /var/run:/var/run:ro
+  # #     - /sys:/sys:ro
+  # #     - /var/lib/docker/:/var/lib/docker:ro
+  # #     - /dev/disk/:/dev/disk:ro
+  # #   devices:
+  # #     - /dev/kmsg
+  # #   privileged: true
+
+  # node_exporter:
+  #   container_name: node_exporter
+  #   image: quay.io/prometheus/node-exporter:v1.5.0
+  #   command: "--path.rootfs=/host"
+  #   networks:
+  #     - alpha_network
+  #   pid: host
+  #   volumes:
+  #     - /:/host:ro,rslave
+
+  # elasticsearch:
+  #   container_name: elasticsearch
+  #   image: elasticsearch:8.12.0
+  #   environment:
+  #     - discovery.type=single-node
+  #     - xpack.security.enabled=false
+  #   networks:
+  #     - alpha_network
+  #   ports:
+  #     - 9200:9200
+  #     - 9300:9300
+  #   volumes:
+  #     - elasticsearch-data:/usr/share/elasticsearch/data
+  #   deploy:
+  #     resources:
+  #       limits:
+  #         memory: 4G
+
+  # kibana:
+  #   container_name: kibana
+  #   image: kibana:8.12.0
+  #   ports:
+  #     - 5601:5601
+  #   networks:
+  #     - alpha_network
+  #   depends_on:
+  #     - elasticsearch
 
 volumes:
   postgres-data:
   prometheus-data:
     driver: local
   elasticsearch-data:
+  redis-insight-data:
 
 networks:
   alpha_network:
