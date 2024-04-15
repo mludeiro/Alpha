@@ -1,30 +1,29 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: gateway
-  namespace: default
+  name: token
   labels:
-    app: gateway
+    app: token
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: gateway
+      app: token
   template:
     metadata:
       labels:
-        app: gateway
+        app: token
       annotations:
         dapr.io/enabled: "true"
-        dapr.io/app-id: "gateway"
+        dapr.io/app-id: "token"
         dapr.io/app-port: "8080"
         dapr.io/log-level: "info"
         dapr.io/sidecar-liveness-probe-period-seconds: "10"
         dapr.io/sidecar-readiness-probe-period-seconds: "10"
     spec:
       containers:
-      - name: gateway
-        image: ghcr.io/mludeiro/alpha.gateway.service:latest
+      - name: token
+        image: ghcr.io/mludeiro/alpha.token.service:latest
         ports:
         - containerPort: 8080
         imagePullPolicy: Always
@@ -34,10 +33,10 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: gateway
+  name: token
 spec:
   type: ClusterIP
   ports:
   - port: 8080
   selector:
-    app: gateway
+    app: token
