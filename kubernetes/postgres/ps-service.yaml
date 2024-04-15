@@ -1,12 +1,25 @@
 apiVersion: v1
 kind: Service
 metadata:
-  name: postgres
+  name: postgres-token
   labels:
-    app: postgres
+    app: postgres-token
 spec:
   type: NodePort
   ports:
     - port: 5432
   selector:
-    app: postgres
+    app: postgres-token
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgres-identity
+  labels:
+    app: postgres-identity
+spec:
+  type: NodePort
+  ports:
+    - port: 5432
+  selector:
+    app: postgres-identity

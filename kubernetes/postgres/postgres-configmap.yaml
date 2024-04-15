@@ -1,9 +1,21 @@
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: postgres-secret
+  name: postgres-secret-token
   labels:
-    app: postgres
+    app: postgres-token
 data:
+  POSTGRES_DB: token
+  POSTGRES_USER: postgres
+  POSTGRES_PASSWORD: password
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: postgres-secret-identity
+  labels:
+    app: postgres-identity
+data:
+  POSTGRES_DB: identity
   POSTGRES_USER: postgres
   POSTGRES_PASSWORD: password

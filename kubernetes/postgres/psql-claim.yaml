@@ -1,9 +1,23 @@
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
-  name: postgres-volume-claim
+  name: postgres-volume-claim-token
   labels:
-    app: postgres
+    app: postgres-token
+spec:
+  storageClassName: manual
+  accessModes:
+    - ReadWriteMany
+  resources:
+    requests:
+      storage: 2Gi
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: postgres-volume-claim-identity
+  labels:
+    app: postgres-identity
 spec:
   storageClassName: manual
   accessModes:
