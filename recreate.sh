@@ -10,13 +10,8 @@ dapr status -k
 kubectl create secret generic regcred --from-file=.dockerconfigjson=/home/mludeiro/.docker/config.json --type=kubernetes.io/dockerconfigjson
 
 kubectl create secret generic alpha-secrets \
-    --from-literal=token-db-connection='User ID=postgres;Password=password;Host=postgres;Port=5432;Database=token;' \
-    --from-literal=identity-db-connection='User ID=postgres;Password=password;Host=postgres;Port=5432;Database=identity;'
-
-token-db-connection = User ID=postgres;Password=password;Host=postgres;Port=5432;Database=token;
-identity-db-connection = User ID=postgres;Password=password;Host=postgres;Port=5432;Database=identity;
-
-kubectl create secret generic alpha-secrets --from-file=./dapr/configuration/secrets.txt
+    --from-literal=token-db-connection='User ID=postgres;Password=password;Host=postgres-token;Port=5432;Database=token;' \
+    --from-literal=identity-db-connection='User ID=postgres;Password=password;Host=postgres-identity;Port=5432;Database=identity;'
 
 kubectl apply -f ./kubernetes/alpha-secretstore-kubernetes.yaml
 
@@ -33,20 +28,33 @@ kubectl apply -f ./kubernetes/postgres/ps-service.yaml
 
 # services implementation
 kubectl apply -f ./kubernetes/services/token-service.yaml
-sleep 10
-kubectl apply -f ./kubernetes/services/identity-service.yaml
-sleep 10
-kubectl apply -f ./kubernetes/services/gateway-service.yaml
-sleep 10
-kubectl apply -f ./kubernetes/services/frontend-service.yaml
-sleep 10
-kubectl apply -f ./kubernetes/services/weather-service.yaml
-sleep 10
+kubectl wait deployments/token --for condition=Available
 
-helm repo add ingress-nginx https://kubernetes.github.io/ingress-nginx
-helm repo update
-helm install ingress-nginx ingress-nginx/ingress-nginx --namespace default
+kubectl apply -f ./kubernetes/services/gateway-service.yaml
+kubectl wait deployments/gateway --for condition=Available
+
+kubectl apply -f ./kubernetes/services/frontend-service.yaml
+kubectl wait deployments/frontend --for condition=Available
+
+kubectl apply -f ./kubernetes/services/weather-service.yaml
+kubectl wait deployments/weather --for condition=Available
+
+kubectl apply -f ./kubernetes/services/identity-service.yaml
+kubectl wait deployments/identity --for condition=Available
+
+# helm repo add ingress-nginx https://kubernetes.github.io/ingress-nginx
+# helm repo update
+# helm install ingress-nginx ingress-nginx/ingress-nginx --namespace default
+
+minikube addons enable ingress
+
+kubectl get ingress -A
+
+sleep 20
+
+kubectl apply -f ./ingress/gateway-ingress.yaml
 
 
 minikube addons enable metrics-server
 minikube dashboard
+

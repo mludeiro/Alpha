@@ -30,14 +30,3 @@ spec:
         imagePullPolicy: Always
       imagePullSecrets:
       - name: regcred
----
-apiVersion: v1
-kind: Service
-metadata:
-  name: weather
-spec:
-  type: ClusterIP
-  ports:
-  - port: 8080
-  selector:
-    app: weather

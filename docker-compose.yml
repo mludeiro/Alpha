@@ -67,13 +67,13 @@ services:
 
   token:
     container_name: token
-#    image: ghcr.io/mludeiro/alpha.token.service:latest
-    build:
-      context: ../Alpha.Token.Service
-      dockerfile: Dockerfile
-      args:
-        NUGET_USER: ${NUGET_USER}
-        NUGET_TOKEN: ${NUGET_TOKEN}      
+    image: ghcr.io/mludeiro/alpha.token.service:latest
+    # build:
+    #   context: ../Alpha.Token.Service
+    #   dockerfile: Dockerfile
+    #   args:
+    #     NUGET_USER: ${NUGET_USER}
+    #     NUGET_TOKEN: ${NUGET_TOKEN}      
     networks:
       - alpha_network
     volumes:
