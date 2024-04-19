@@ -7,6 +7,10 @@ echo Waiting for Dapr to start up ...
 sleep 60
 dapr status -k
 
+# create namespaces
+kubectl create namespace tools
+kubectl create namespace services
+
 kubectl create secret generic regcred --from-file=.dockerconfigjson=/home/mludeiro/.docker/config.json --type=kubernetes.io/dockerconfigjson
 
 kubectl create secret generic alpha-secrets \
@@ -18,13 +22,18 @@ kubectl apply -f ./kubernetes/alpha-secretstore-kubernetes.yaml
 # We need this for the "list" permission on secrets. Dapr has this role bind already
 kubectl apply -f ./kubernetes/alpha-secret-read-role.yaml
 
+#redis
+kubectl apply -f ./kubernetes/redis.yaml
+kubectl wait deployments/redis --for condition=Available --namespace=tools
+kubectl apply -f ./kubernetes/alpha-distributedlock.yaml
+
+
 # postgres implementation
 kubectl apply -f ./kubernetes/postgres/postgres-configmap.yaml
 kubectl apply -f ./kubernetes/postgres/psql-pv.yaml
 kubectl apply -f ./kubernetes/postgres/psql-claim.yaml
 kubectl apply -f ./kubernetes/postgres/ps-deployment.yaml
 kubectl apply -f ./kubernetes/postgres/ps-service.yaml
-
 
 # services implementation
 kubectl apply -f ./kubernetes/services/token-service.yaml
