@@ -1,15 +1,16 @@
 minikube delete
-minikube start
+minikube start --memory=8192 --cpus=4
 
-dapr init -k
+dapr init -k --wait
 
-echo Waiting for Dapr to start up ...
-sleep 60
 dapr status -k
 
+
+
 # create namespaces
-kubectl create namespace tools
-kubectl create namespace services
+kubectl create namespace alpha-prod
+
+kubectl config set-context --current --namespace=alpha-prod
 
 kubectl create secret generic regcred --from-file=.dockerconfigjson=/home/mludeiro/.docker/config.json --type=kubernetes.io/dockerconfigjson
 
@@ -19,8 +20,10 @@ kubectl create secret generic alpha-secrets \
 
 kubectl apply -f ./kubernetes/alpha-secretstore-kubernetes.yaml
 
-# We need this for the "list" permission on secrets. Dapr has this role bind already
+# We need this for the "list" permission on secrets. Dapr has this role bind already.
 kubectl apply -f ./kubernetes/alpha-secret-read-role.yaml
+# Use that role in alpha-prod namespace
+# (defined in yaml) kubectl create rolebinding allow-secret-reader --serviceaccount=alpha-prod:default --namespace=alpha-prod --role=secret-reader
 
 #redis
 kubectl apply -f ./kubernetes/redis.yaml
@@ -37,23 +40,23 @@ kubectl apply -f ./kubernetes/postgres/ps-service.yaml
 
 # services implementation
 kubectl apply -f ./kubernetes/services/token-service.yaml
-kubectl wait deployments/token --for condition=Available
+kubectl wait deployments/token --for condition=Available --timeout=90s --namespace=alpha-prod
 
 kubectl apply -f ./kubernetes/services/gateway-service.yaml
-kubectl wait deployments/gateway --for condition=Available
+kubectl wait deployments/gateway --for condition=Available --timeout=90s --namespace=alpha-prod
 
 kubectl apply -f ./kubernetes/services/frontend-service.yaml
-kubectl wait deployments/frontend --for condition=Available
+kubectl wait deployments/frontend --for condition=Available --timeout=90s --namespace=alpha-prod
 
 kubectl apply -f ./kubernetes/services/weather-service.yaml
-kubectl wait deployments/weather --for condition=Available
+kubectl wait deployments/weather --for condition=Available --timeout=90s --namespace=alpha-prod
 
 kubectl apply -f ./kubernetes/services/identity-service.yaml
-kubectl wait deployments/identity --for condition=Available
+kubectl wait deployments/identity --for condition=Available --timeout=90s --namespace=alpha-prod
 
 # helm repo add ingress-nginx https://kubernetes.github.io/ingress-nginx
 # helm repo update
-# helm install ingress-nginx ingress-nginx/ingress-nginx --namespace default
+# helm install ingress-nginx ingress-nginx/ingress-nginx 
 
 minikube addons enable ingress
 
@@ -61,7 +64,7 @@ kubectl get ingress -A
 
 sleep 20
 
-kubectl apply -f ./ingress/gateway-ingress.yaml
+kubectl apply -f ./kubernetes/frontend-ingress.yaml
 
 
 minikube addons enable metrics-server
